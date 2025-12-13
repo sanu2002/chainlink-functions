@@ -1,0 +1,77 @@
+# =========================
+# Node / JS
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+!.env.example
+
+# Encrypted env (NEVER COMMIT)
+.env.enc
+
+# =========================
+# Chainlink Functions
+# =========================
+.cache/
+.artifacts/
+out/
+build/
+
+# Local Functions simulation artifacts
+.localFunctions/
+.localFunctionsTestnet/
+
+# =========================
+# Hardhat / Foundry
+# =========================
+artifacts/
+cache/
+broadcast/
+out/
+
+# =========================
+# OS / Editor junk
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDEs
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Logs
+# =========================
+logs/
+*.log
+
+# =========================
+# Secrets / Keys
+# =========================
+*.key
+*.pem
+*.secret
+
+# =========================
+# Coverage / Tests
+# =========================
+coverage/
+coverage.lcov
+
+# =========================
+# Misc
+# =========================
+tmp/
+temp/
