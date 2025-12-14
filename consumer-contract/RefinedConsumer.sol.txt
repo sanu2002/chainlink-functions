@@ -1,0 +1,120 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {FunctionsClient} from "@chainlink/contracts@1.5.0/src/v0.8/functions/v1_0_0/FunctionsClient.sol";
+
+import {FunctionsRequest} from "@chainlink/contracts@1.5.0/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
+import {ConfirmedOwner} from "@chainlink/contracts@1.5.0/src/v0.8/shared/access/ConfirmedOwner.sol";
+
+abstract contract SimpleSmartConsumerContract is
+    FunctionsClient,
+    ConfirmedOwner
+{
+    using FunctionsRequest for FunctionsRequest.Request;
+
+    // storage value to store the last_requestId,last_lastresponse,error_lastresponse ;
+
+    bytes32 public s_lastrequestId;
+    bytes public s_lastResponse;
+    bytes public s_lastError ;
+
+    error UnexpectedRequestID(bytes32 requestId);
+
+    event Response(bytes32 indexed requestId, bytes response, bytes err);
+
+    // Here we are setting the router address and as we all we are initialising with router address as well as ConfirmedOwner()
+    constructor(
+        address _router
+    ) FunctionsClient(_router) ConfirmedOwner(msg.sender) {}
+
+    function sendRequest(
+        // bytes memory data,
+        // uint64 subscriptionId,
+        // uint32 callbackGasLimit,
+        // bytes32 donId
+
+        // We can directly write the above parameters but it is not suitable if the user or someone can directly call from etherscan
+
+        string memory source, // You can pass the javascript inline string code
+        bytes memory encryptedSecretsUrls, // Your encrypted secret urls
+        uint8 donHostedSecretsSlotID,
+        uint64 donHostedSecretsVersion,
+        string[] memory args, // you can pass the array of args from ui
+        bytes[] memory bytesArgs, // You have 2 option  to pass the args
+        uint64 subscriptionId,
+        uint32 gasLimit,
+        bytes32 donID
+    ) external onlyOwner returns (bytes32 requestId) {
+        FunctionsRequest.Request memory req;
+
+        req.initializeRequestForInlineJavaScript(source);
+
+        if (encryptedSecretsUrls.length > 0) {
+            req.addSecretsReference(encryptedSecretsUrls);
+        } else if (donHostedSecretsVersion > 0) {
+            req.addDONHostedSecrets(
+                donHostedSecretsSlotID,
+                donHostedSecretsVersion
+            );
+        }
+
+        if (args.length > 0) req.setArgs(args);
+
+        if (bytesArgs.length > 0) req.setBytesArgs(bytesArgs);
+
+        s_lastrequestId = _sendRequest(
+            req.encodeCBOR(),
+            subscriptionId,
+            gasLimit,
+            donID
+        );
+        // In Chainlink, the encodeCBOR() function converts a structured data request into a
+        // CBOR-encoded byte array (bytes type in Solidity). This is the required format for sending the request from
+        //  a smart contract to the Chainlink Decentralized Oracle Network (DON).
+    }
+
+    //      /**
+    //    * @notice Send a pre-encoded CBOR request
+    //    * @param request CBOR-encoded request data
+    //    * @param subscriptionId Billing ID
+    //    * @param gasLimit The maximum amount of gas the request can consume
+    //    * @param donID ID of the job to be invoked
+    //    * @return requestId The ID of the sent request
+    //    */
+
+    function sendRequestCBOR(
+        bytes memory request,
+        uint64 subscriptionId,
+        uint32 gasLimit,
+        bytes32 donID
+    ) external onlyOwner returns (bytes32 requestId) {
+        s_lastrequestId = _sendRequest(
+            request,
+            subscriptionId,
+            gasLimit,
+            donID
+        );
+        return s_lastrequestId;
+    }
+
+    /**
+     * @notice Store latest result/error
+     * @param requestId The request ID, returned by sendRequest()
+     * @param response Aggregated response from the user code
+     * @param err Aggregated error from the user code or from the execution pipeline
+     * Either response or error parameter will be set, but never both
+     */
+
+    function fulfillRequest(
+        bytes32 requestId,
+        bytes memory response,
+        bytes memory err
+    ) internal override {
+        if (s_lastrequestId != requestId) {
+            revert UnexpectedRequestID(requestId);
+        }
+        s_lastrequestId = response;
+        s_lastError = err;
+        emit Response(requestId, s_lastResponse, s_lastError);
+    }
+}
